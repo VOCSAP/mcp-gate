@@ -24,9 +24,9 @@ Claude.ai → Traefik → mcp-gate (JWT validation) → mcp-grafana → Grafana
 export LISTEN_ADDR=0.0.0.0:8080
 export UPSTREAM_URL=http://mcp-grafana:8000
 export RESOURCE_URI=https://grafana-mcp.999.haus
-export AUTHORIZATION_SERVER=https://authentik.999.haus/application/o/grafana-mcp/
-export JWKS_URI=https://authentik.999.haus/application/o/grafana-mcp/jwks/
-export EXPECTED_ISSUER=https://authentik.999.haus/application/o/grafana-mcp/
+export AUTHORIZATION_SERVER=https://auth.999.haus/application/o/grafana-mcp/
+export JWKS_URI=https://auth.999.haus/application/o/grafana-mcp/jwks/
+export EXPECTED_ISSUER=https://auth.999.haus/application/o/grafana-mcp/
 export EXPECTED_AUDIENCE=your-client-id
 
 go run ./cmd/mcp-gate
