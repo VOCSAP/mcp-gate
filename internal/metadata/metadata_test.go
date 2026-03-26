@@ -6,13 +6,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/chris/mcp-gate/internal/metadata"
+	"github.com/c-premus/mcp-gate/internal/metadata"
 )
 
 func testMetadata() metadata.ProtectedResourceMetadata {
 	return metadata.ProtectedResourceMetadata{
-		Resource:               "https://grafana-mcp.999.haus",
-		AuthorizationServers:   []string{"https://auth.999.haus/application/o/grafana-mcp/"},
+		Resource:               "https://mcp.example.com",
+		AuthorizationServers:   []string{"https://auth.example.com/application/o/mcp/"},
 		ScopesSupported:        []string{"openid", "profile"},
 		BearerMethodsSupported: []string{"header"},
 		ResourceName:           "Grafana MCP Server",
@@ -43,10 +43,10 @@ func TestHandler_GET_ValidJSON(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if got.Resource != "https://grafana-mcp.999.haus" {
-		t.Errorf("resource = %q, want %q", got.Resource, "https://grafana-mcp.999.haus")
+	if got.Resource != "https://mcp.example.com" {
+		t.Errorf("resource = %q, want %q", got.Resource, "https://mcp.example.com")
 	}
-	if len(got.AuthorizationServers) != 1 || got.AuthorizationServers[0] != "https://auth.999.haus/application/o/grafana-mcp/" {
+	if len(got.AuthorizationServers) != 1 || got.AuthorizationServers[0] != "https://auth.example.com/application/o/mcp/" {
 		t.Errorf("authorization_servers = %v, unexpected", got.AuthorizationServers)
 	}
 	if got.ResourceName != "Grafana MCP Server" {
