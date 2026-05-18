@@ -37,9 +37,13 @@ func Handler(meta ProtectedResourceMetadata) (http.HandlerFunc, error) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		// max-age=300 keeps caches fresh in case AUTHORIZATION_SERVER is reconfigured;
-		// must-revalidate forbids serving stale entries past the TTL.
-		w.Header().Set("Cache-Control", "max-age=300, must-revalidate")
+		// no-store: per the Anthropic claude.ai MCP troubleshooting guidance
+		// (anthropics/claude-ai-mcp #136) the resource-metadata response must
+		// not be cached anywhere along the path. Caching by an intermediary
+		// (Cloudflare, browser, claude.ai proxy) was implicated as one of the
+		// factors breaking the OAuth callback in older claude.ai versions and
+		// is still recommended by Anthropic for any RFC 9728 endpoint.
+		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
 	}, nil

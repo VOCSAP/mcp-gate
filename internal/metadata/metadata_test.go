@@ -88,8 +88,8 @@ func TestHandler_GET_CacheControl(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	cc := w.Header().Get("Cache-Control")
-	if cc != "max-age=300, must-revalidate" {
-		t.Errorf("Cache-Control = %q, want %q", cc, "max-age=300, must-revalidate")
+	if cc != "no-store" {
+		t.Errorf("Cache-Control = %q, want %q", cc, "no-store")
 	}
 }
 
