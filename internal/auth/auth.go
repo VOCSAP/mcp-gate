@@ -61,7 +61,12 @@ func (s Scopes) MarshalJSON() ([]byte, error) {
 // Claims represents the JWT claims validated by this middleware.
 type Claims struct {
 	jwt.RegisteredClaims
+	// Scope is the RFC 9068 §2.2.3 "scope" claim (space-separated string).
 	Scope Scopes `json:"scope,omitempty"`
+	// Scp is the fosite/Authelia legacy alias emitted as a JSON array. It is
+	// folded into Scope by the middleware when "scope" is absent. See the
+	// fold in (*Middleware).ServeHTTP, just after JWT parsing.
+	Scp Scopes `json:"scp,omitempty"`
 }
 
 // Config holds JWT validation configuration.
@@ -310,6 +315,14 @@ func (m *Middleware) Handler(next http.Handler) http.Handler {
 			return
 		}
 
+		// Fosite/Authelia interop: the JWT may carry scopes under the legacy
+		// "scp" key (JSON array) instead of the RFC 9068 §2.2.3 "scope" key.
+		// Fold scp into Scope so downstream logic has a single source of truth.
+		// RFC 9068 "scope" wins when both are present.
+		if len(claims.Scope) == 0 && len(claims.Scp) > 0 {
+			claims.Scope = claims.Scp
+		}
+
 		// Check typ header (advisory per RFC 9068 §2.1).
 		// - "at+jwt": preferred for access tokens, accept
 		// - "JWT" or absent: standard default, accept with debug log
@@ -462,7 +475,7 @@ func (m *Middleware) writeNoTokenError(w http.ResponseWriter) {
 		`Bearer realm="%s", scope="%s", resource_metadata="%s/.well-known/oauth-protected-resource"`,
 		sanitizeQuotedString(m.cfg.Realm),
 		sanitizeQuotedString(m.cfg.ScopesSupported),
-		sanitizeQuotedString(m.cfg.ResourceURI),
+		sanitizeQuotedString(strings.TrimSuffix(m.cfg.ResourceURI, "/")),
 	))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
@@ -479,7 +492,7 @@ func (m *Middleware) writeInvalidTokenError(w http.ResponseWriter) {
 	w.Header().Set("WWW-Authenticate", fmt.Sprintf(
 		`Bearer realm="%s", error="invalid_token", error_description="The access token is invalid or expired", resource_metadata="%s/.well-known/oauth-protected-resource"`,
 		sanitizeQuotedString(m.cfg.Realm),
-		sanitizeQuotedString(m.cfg.ResourceURI),
+		sanitizeQuotedString(strings.TrimSuffix(m.cfg.ResourceURI, "/")),
 	))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
@@ -495,7 +508,7 @@ func (m *Middleware) writeInsufficientScopeError(w http.ResponseWriter) {
 		`Bearer realm="%s", error="insufficient_scope", scope="%s", error_description="Required scope not granted", resource_metadata="%s/.well-known/oauth-protected-resource"`,
 		sanitizeQuotedString(m.cfg.Realm),
 		sanitizeQuotedString(strings.Join(m.cfg.RequiredScopes, " ")),
-		sanitizeQuotedString(m.cfg.ResourceURI),
+		sanitizeQuotedString(strings.TrimSuffix(m.cfg.ResourceURI, "/")),
 	))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusForbidden)

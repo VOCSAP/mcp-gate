@@ -745,6 +745,121 @@ func TestScopeClaimAsSpaceSeparatedString(t *testing.T) {
 	}
 }
 
+// TestScpClaimFallback covers the fosite/Authelia legacy "scp" claim form
+// (JSON array). RFC 9068 §2.2.3 mandates "scope" (space-separated string), but
+// Authelia/fosite emits "scp" by default. The middleware folds scp into scope
+// when scope is absent so downstream scope validation succeeds.
+func TestScpClaimFallback(t *testing.T) {
+	t.Parallel()
+	ts := newTestSetup(t)
+	defer ts.Close()
+
+	mw := newMiddleware(t, ts, []string{"openid"})
+
+	now := time.Now()
+	mapClaims := jwt.MapClaims{
+		"iss": testIssuer,
+		"aud": testAudience,
+		"exp": now.Add(time.Hour).Unix(),
+		"iat": now.Unix(),
+		"sub": "test-user",
+		"scp": []string{"openid", "profile"},
+	}
+	token := signToken(t, ts.privKey, mapClaims, map[string]any{"typ": "at+jwt"})
+
+	w := doRequest(t, mw, "Bearer "+token)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for scp fallback, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// TestScopeWinsOverScp verifies RFC 9068 precedence: when both claims are
+// present, "scope" is authoritative and "scp" is ignored. The token below has
+// scope without the required openid; scp does include openid but must NOT be
+// consulted as a fallback (scope is non-empty).
+func TestScopeWinsOverScp(t *testing.T) {
+	t.Parallel()
+	ts := newTestSetup(t)
+	defer ts.Close()
+
+	mw := newMiddleware(t, ts, []string{"openid"})
+
+	now := time.Now()
+	mapClaims := jwt.MapClaims{
+		"iss":   testIssuer,
+		"aud":   testAudience,
+		"exp":   now.Add(time.Hour).Unix(),
+		"iat":   now.Unix(),
+		"sub":   "test-user",
+		"scope": "profile",
+		"scp":   []string{"openid", "profile"},
+	}
+	token := signToken(t, ts.privKey, mapClaims, map[string]any{"typ": "at+jwt"})
+
+	w := doRequest(t, mw, "Bearer "+token)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 (scope wins, missing openid), got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// TestResourceMetadataNoDoubleSlash regresses the cosmetic bug where the
+// WWW-Authenticate "resource_metadata" parameter contained a double slash
+// when ResourceURI ended with "/" (e.g. https://host//.well-known/...). The
+// fix trims any trailing slash before concatenation.
+func TestResourceMetadataNoDoubleSlash(t *testing.T) {
+	t.Parallel()
+	ts := newTestSetup(t)
+	defer ts.Close()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	mw, err := auth.NewMiddleware(auth.Config{
+		Ctx:              ctx,
+		JWKSURI:          ts.jwksServer.URL,
+		RefreshInterval:  time.Hour,
+		ExpectedIssuer:   testIssuer,
+		ExpectedAudience: testAudience,
+		RequiredScopes:   []string{"openid"},
+		ResourceURI:      "https://resource.example.com/",
+		Realm:            testRealm,
+		ScopesSupported:  "openid profile",
+	})
+	if err != nil {
+		t.Fatalf("NewMiddleware: %v", err)
+	}
+
+	// 401 path: no Bearer header at all.
+	w := doRequest(t, mw, "")
+	if got := w.Header().Get("WWW-Authenticate"); strings.Contains(got, "//.well-known") {
+		t.Errorf("401 WWW-Authenticate contains double slash: %q", got)
+	}
+
+	// 401 invalid_token path: malformed token.
+	w = doRequest(t, mw, "Bearer not-a-real-jwt")
+	if got := w.Header().Get("WWW-Authenticate"); strings.Contains(got, "//.well-known") {
+		t.Errorf("invalid_token WWW-Authenticate contains double slash: %q", got)
+	}
+
+	// 403 insufficient_scope path: valid token but missing required scope.
+	now := time.Now()
+	mapClaims := jwt.MapClaims{
+		"iss":   testIssuer,
+		"aud":   testAudience,
+		"exp":   now.Add(time.Hour).Unix(),
+		"iat":   now.Unix(),
+		"sub":   "test-user",
+		"scope": "profile",
+	}
+	token := signToken(t, ts.privKey, mapClaims, map[string]any{"typ": "at+jwt"})
+	w = doRequest(t, mw, "Bearer "+token)
+	if got := w.Header().Get("WWW-Authenticate"); strings.Contains(got, "//.well-known") {
+		t.Errorf("insufficient_scope WWW-Authenticate contains double slash: %q", got)
+	}
+}
+
 func TestEmptyScopeRejected(t *testing.T) {
 	t.Parallel()
 	ts := newTestSetup(t)
