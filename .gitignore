@@ -38,3 +38,6 @@ grafana/dist/
 # Environment (secrets)
 .env
 *.env.local
+
+# Graphify output (knowledge graph)
+graphify-out/
