@@ -8,10 +8,17 @@ This file lists end-user-facing changes only — `feat`, `fix`, `chore`, and
 `BREAKING`. CI, test, refactor, and docs commits are visible in the git log
 but intentionally omitted here to keep the changelog signal-dense.
 
+## [0.21.13] - 2026-11-01
+
+### Maintenance
+
+- chore(deps): update dependency @types/node to v26.6.6 (#292)
+
 ## [0.21.12] - 2026-10-29
 
 ### Maintenance
 
+- chore(changelog): update for v0.21.12
 - chore(deps): update mcr.microsoft.com/devcontainers/go:1.27 docker digest to 32aad7e
 - chore(deps): update Node runtime to v26 (#289)
 
@@ -1379,6 +1386,7 @@ but intentionally omitted here to keep the changelog signal-dense.
 
 - chore: add devcontainer from greek-fire template
 
+[0.21.13]: https://github.com/c-premus/mcp-gate/compare/v0.21.12...v0.21.13
 [0.21.12]: https://github.com/c-premus/mcp-gate/compare/v0.21.11...v0.21.12
 [0.21.11]: https://github.com/c-premus/mcp-gate/compare/v0.21.10...v0.21.11
 [0.21.10]: https://github.com/c-premus/mcp-gate/compare/v0.21.9...v0.21.10
