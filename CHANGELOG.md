@@ -8,10 +8,18 @@ This file lists end-user-facing changes only — `feat`, `fix`, `chore`, and
 `BREAKING`. CI, test, refactor, and docs commits are visible in the git log
 but intentionally omitted here to keep the changelog signal-dense.
 
+## [0.21.14] - 2026-11-02
+
+### Maintenance
+
+- chore(deps): update dependency renovatebot/renovate to v44.198.0 (#294)
+- chore(deps): lock file maintenance (#293)
+
 ## [0.21.13] - 2026-11-01
 
 ### Maintenance
 
+- chore(changelog): update for v0.21.13
 - chore(deps): update dependency @types/node to v26.6.6 (#292)
 
 ## [0.21.12] - 2026-10-29
@@ -1386,6 +1394,7 @@ but intentionally omitted here to keep the changelog signal-dense.
 
 - chore: add devcontainer from greek-fire template
 
+[0.21.14]: https://github.com/c-premus/mcp-gate/compare/v0.21.13...v0.21.14
 [0.21.13]: https://github.com/c-premus/mcp-gate/compare/v0.21.12...v0.21.13
 [0.21.12]: https://github.com/c-premus/mcp-gate/compare/v0.21.11...v0.21.12
 [0.21.11]: https://github.com/c-premus/mcp-gate/compare/v0.21.10...v0.21.11
