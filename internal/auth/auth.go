@@ -64,6 +64,10 @@ type Claims struct {
 	jwt.RegisteredClaims
 	Scope Scopes `json:"scope,omitempty"`
 
+	// Scp is the fosite/Authelia alias for Scope (JSON array). It is only
+	// consulted when Scope is empty.
+	Scp Scopes `json:"scp,omitempty"`
+
 	// Cnf is the RFC 7800 confirmation claim. Its presence means the AS bound
 	// the token to a key the client must prove possession of (DPoP, RFC 9449;
 	// mTLS, RFC 8705). mcp-gate verifies neither proof, so accepting such a
@@ -369,6 +373,10 @@ func (m *Middleware) Handler(next http.Handler) http.Handler {
 			span.SetAttributes(attribute.String("auth.outcome", outcome))
 			m.writeInvalidTokenError(w)
 			return
+		}
+
+		if len(claims.Scope) == 0 {
+			claims.Scope = claims.Scp
 		}
 
 		// Scope validation — 403, not 401

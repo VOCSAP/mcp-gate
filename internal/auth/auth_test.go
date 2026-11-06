@@ -752,6 +752,72 @@ func TestScopeClaimAsSpaceSeparatedString(t *testing.T) {
 	}
 }
 
+func scpTestToken(t *testing.T, ts *testSetup, extra jwt.MapClaims) string {
+	t.Helper()
+	now := time.Now()
+	mapClaims := jwt.MapClaims{
+		"iss": testIssuer,
+		"aud": testAudience,
+		"exp": now.Add(time.Hour).Unix(),
+		"iat": now.Unix(),
+		"sub": "test-user",
+	}
+	for k, v := range extra {
+		mapClaims[k] = v
+	}
+	return signToken(t, ts.privKey, mapClaims, map[string]any{"typ": "at+jwt"})
+}
+
+// Authelia (fosite) emits scopes under "scp" as a JSON array instead of the
+// RFC 9068 "scope" string.
+func TestScpClaimFallback(t *testing.T) {
+	t.Parallel()
+	ts := newTestSetup(t)
+	defer ts.Close()
+
+	mw := newMiddleware(t, ts, []string{"openid"})
+	token := scpTestToken(t, ts, jwt.MapClaims{"scp": []string{"openid", "profile"}})
+
+	w := doRequest(t, mw, "Bearer "+token)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for scp-only token, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestScpClaimInsufficientScopeReturns403(t *testing.T) {
+	t.Parallel()
+	ts := newTestSetup(t)
+	defer ts.Close()
+
+	mw := newMiddleware(t, ts, []string{"openid"})
+	token := scpTestToken(t, ts, jwt.MapClaims{"scp": []string{"profile"}})
+
+	w := doRequest(t, mw, "Bearer "+token)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for scp without required scope, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestScopeWinsOverScp(t *testing.T) {
+	t.Parallel()
+	ts := newTestSetup(t)
+	defer ts.Close()
+
+	mw := newMiddleware(t, ts, []string{"openid"})
+	token := scpTestToken(t, ts, jwt.MapClaims{
+		"scope": "profile",
+		"scp":   []string{"openid", "profile"},
+	})
+
+	w := doRequest(t, mw, "Bearer "+token)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 (scope present and lacks openid, scp ignored), got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestEmptyScopeRejected(t *testing.T) {
 	t.Parallel()
 	ts := newTestSetup(t)
