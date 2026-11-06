@@ -92,9 +92,9 @@ func Handler(meta ProtectedResourceMetadata) (http.HandlerFunc, error) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		// max-age=300 keeps caches fresh in case AUTHORIZATION_SERVER is reconfigured;
-		// must-revalidate forbids serving stale entries past the TTL.
-		w.Header().Set("Cache-Control", "max-age=300, must-revalidate")
+		// Intermediary caching (CDN, browser, claude.ai proxy) has been
+		// implicated in OAuth discovery breakage (anthropics/claude-ai-mcp#136).
+		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
 	}, nil
